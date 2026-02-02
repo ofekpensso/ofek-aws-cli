@@ -47,13 +47,13 @@ def start(instance_id):
 
 
 @ec2.command()
-@click.argument('instance_id')
-def delete(instance_id):
+@click.argument('identifier')
+def delete(identifier):
     """Terminate an EC2 instance (Irreversible!)."""
 
     # Safety Prompt: Force the user to confirm the action
-    if click.confirm(f"WARNING: Are you sure you want to PERMANENTLY delete {instance_id}?"):
-        ec2_ops.terminate_instance(instance_id)
+    if click.confirm(f"WARNING: Are you sure you want to PERMANENTLY delete {identifier}?"):
+        ec2_ops.terminate_instance(identifier)
     else:
         click.echo("Operation cancelled.")
 

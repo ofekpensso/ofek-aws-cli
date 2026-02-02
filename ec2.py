@@ -232,18 +232,53 @@ def start_instance(instance_id):
         click.echo(click.style(f"Error: {e}", fg="red"))
 
 
-def terminate_instance(instance_id):
+def get_id_by_name(name_or_id):
     """
-    Terminates (PERMANENTLY deletes) a specific EC2 instance.
-    Includes strict tag validation to ensure we don't delete production servers.
+    Helper function to resolve an identifier (Name or ID) to a specific Instance ID.
+    If input starts with 'i-', assume it's an ID.
+    Otherwise, search for an instance with that 'Name' tag.
     """
-    click.echo(f"Attempting to terminate instance {instance_id}...")
+    # If it looks like an ID, return it as is
+    if name_or_id.startswith("i-"):
+        return name_or_id
 
+    # Search for instances with this Name AND our Creator tag
+    click.echo(f"Searching for instance named '{name_or_id}'...")
+
+    filters = [
+        {'Name': 'tag:Name', 'Values': [name_or_id]},
+        {'Name': 'tag:' + TAG_KEY, 'Values': [TAG_VALUE]},
+        {'Name': 'instance-state-name', 'Values': ['running', 'stopped', 'pending', 'stopping']}
+        # Don't find terminated ones
+    ]
+
+    found_instances = list(ec2.instances.filter(Filters=filters))
+
+    if len(found_instances) == 0:
+        raise Exception(f"No instance found with name '{name_or_id}' (created by this CLI).")
+
+    if len(found_instances) > 1:
+        raise Exception(f"Multiple instances found with name '{name_or_id}'. Please use the Instance ID to be safe.")
+
+    # If exactly one found, return its ID
+    return found_instances[0].id
+
+
+def terminate_instance(identifier):
+    """
+    Terminates an instance by Name or ID.
+    """
     try:
+        # Step 1: Resolve the ID (Translate Name -> ID if needed)
+        instance_id = get_id_by_name(identifier)
+
+        click.echo(f"Resolved ID: {instance_id}")
+        click.echo(f"Attempting to terminate instance {instance_id}...")
+
         instance = ec2.Instance(instance_id)
         instance.load()
 
-        # Validation: Check ownership tags
+        # Validation: Double check ownership tags (Safety first!)
         is_ours = False
         if instance.tags:
             for tag in instance.tags:
@@ -258,7 +293,7 @@ def terminate_instance(instance_id):
 
         # Execute Termination
         instance.terminate()
-        click.echo(click.style(f"Success! Instance {instance_id} is being terminated.", fg="red"))
+        click.echo(click.style(f"Success! Instance '{identifier}' ({instance_id}) is being terminated.", fg="red"))
 
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))
