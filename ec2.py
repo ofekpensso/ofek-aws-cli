@@ -111,3 +111,57 @@ def create_instance(instance_type, os_type, name):
     except Exception as e:
         click.echo(click.style(f"AWS Error: {e}", fg="red"))
 
+
+def list_instances():
+    """
+    Lists all EC2 instances created by this tool.
+    Displays them in a formatted table using the 'rich' library.
+    """
+
+    # Filter instances that have our specific 'CreatedBy' tag
+    # We want to see ALL states (running, stopped, pending) to manage them
+    instances = ec2.instances.filter(
+        Filters=[
+            {'Name': 'tag:' + TAG_KEY, 'Values': [TAG_VALUE]}
+        ]
+    )
+
+    # Initialize the Rich Console and Table
+    console = Console()
+    table = Table(show_header=True, header_style="bold magenta")
+
+    # Define table columns
+    table.add_column("Instance ID", style="dim")
+    table.add_column("Name", style="cyan")
+    table.add_column("Type")
+    table.add_column("State")
+    table.add_column("Public IP", justify="right")
+
+    click.echo("Fetching instances...")
+
+    found_instances = False
+    for instance in instances:
+        found_instances = True
+
+        # Extract the 'Name' tag if it exists
+        name = "N/A"
+        if instance.tags:
+            for tag in instance.tags:
+                if tag['Key'] == 'Name':
+                    name = tag['Value']
+                    break
+
+        # Add row to the table
+        # We use strict string conversion to avoid errors
+        table.add_row(
+            instance.id,
+            name,
+            instance.instance_type,
+            instance.state['Name'],
+            instance.public_ip_address if instance.public_ip_address else "N/A"
+        )
+
+    if found_instances:
+        console.print(table)
+    else:
+        click.echo(click.style("No instances found with the platform-cli tag.", fg="yellow"))

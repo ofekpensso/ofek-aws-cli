@@ -30,8 +30,8 @@ def create(type, os, name):
 
 @ec2.command()
 def list():
-    """List instances (To be implemented)."""
-    click.echo("Listing logic coming soon...")
+    """List all instances created by this CLI."""
+    ec2_ops.list_instances()
 
 # --- S3 Group (Placeholders for later) ---
 @cli.group()
