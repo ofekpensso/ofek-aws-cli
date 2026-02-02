@@ -13,8 +13,8 @@ def get_common_tags():
     """
     user_name = getpass.getuser()
     return [
-        {'key': TAG_KEY, 'value': TAG_VALUE},
-        {'key': 'owner', 'value': user_name}
+        {'Key': TAG_KEY, 'Value': TAG_VALUE},
+        {'Key': 'owner', 'Value': user_name}
     ]
 
 def get_boto3_resource(service_name):

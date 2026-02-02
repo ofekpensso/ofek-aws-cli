@@ -1,5 +1,7 @@
 import click
 from utils import get_boto3_resource, get_common_tags, TAG_KEY, TAG_VALUE
+from rich.console import Console
+from rich.table import Table
 
 ec2 = get_boto3_resource('ec2')
 
@@ -50,9 +52,9 @@ def count_our_instances():
     return count
 
 
-def create_instance(instance_type, os_type):
+def create_instance(instance_type, os_type, name):
     """
-    Creates new EC2 instance.
+    Main logic to create an EC2 instance.
     Enforces policies: Max 2 instances, specific types only.
     """
 
@@ -77,25 +79,35 @@ def create_instance(instance_type, os_type):
         click.echo(click.style(f"Error finding AMI: {e}", fg="red"))
         return
 
+    # --- Tagging Logic ---
+    # We need to prepare the tags list BEFORE creating the instance.
+    # First, get the mandatory tags (CreatedBy, Owner)
+    tags = get_common_tags()
+
+    # Then, append the 'Name' tag provided by the user
+    # This ensures the instance has a visible name in the AWS Console
+    tags.append({'Key': 'Name', 'Value': name})
+
     # 3. Launch the Instance
-    click.echo("Launching instance...")
+    click.echo(f"Launching instance '{name}'...")
     try:
         instances = ec2.create_instances(
             ImageId=ami_id,
             MinCount=1,
             MaxCount=1,
             InstanceType=instance_type,
-            # We apply tags immediately upon creation
+            # Apply the combined list of tags to the new instance
             TagSpecifications=[
                 {
                     'ResourceType': 'instance',
-                    'Tags': get_common_tags()  # Uses the function from utils.py
+                    'Tags': tags
                 }
             ]
         )
 
         new_instance_id = instances[0].id
-        click.echo(click.style(f"Success! Instance {new_instance_id} created successfully.", fg="green"))
+        click.echo(click.style(f"Success! Instance '{name}' ({new_instance_id}) created successfully.", fg="green"))
 
     except Exception as e:
         click.echo(click.style(f"AWS Error: {e}", fg="red"))
+
