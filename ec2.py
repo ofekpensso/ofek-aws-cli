@@ -40,7 +40,12 @@ def count_our_instances():
     count = 0
     # Filter only for running or pending instances (ignore terminated ones)
     instances = ec2.instances.filter(
-        Filters=[{'Name': 'instance-state-name', 'Values': ['running', 'pending']}]
+        Filters=[
+            {
+                'Name': 'instance-state-name',
+                'Values': ['running', 'pending', 'stopped', 'stopping']
+            }
+        ]
     )
 
     for instance in instances:
