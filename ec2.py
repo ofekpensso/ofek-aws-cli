@@ -167,17 +167,20 @@ def list_instances():
         click.echo(click.style("No instances found with the platform-cli tag.", fg="yellow"))
 
 
-def stop_instance(instance_id):
+def stop_instance(identifier):
     """
-    Stops a specific EC2 instance, but ONLY if it was created by this tool.
+    Stops an EC2 instance by Name or ID.
+    Only allows stopping instances created by this CLI.
     """
-    click.echo(f"Attempting to stop instance {instance_id}...")
-
     try:
+        # Step 1: Resolve ID from Name (if needed)
+        instance_id = get_id_by_name(identifier)
+
+        click.echo(f"Resolved ID: {instance_id}")
+        click.echo(f"Attempting to stop instance {instance_id}...")
+
         # Get the instance object
         instance = ec2.Instance(instance_id)
-
-        # Load tags (crucial step to check ownership)
         instance.load()
 
         # Validation: Check if the instance has our specific tag
@@ -195,19 +198,24 @@ def stop_instance(instance_id):
 
         # Perform the action
         instance.stop()
-        click.echo(click.style(f"Success! Instance {instance_id} is stopping...", fg="yellow"))
+        click.echo(click.style(f"Success! Instance '{identifier}' ({instance_id}) is stopping...", fg="yellow"))
 
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))
 
 
-def start_instance(instance_id):
+def start_instance(identifier):
     """
-    Starts a specific EC2 instance, but ONLY if it was created by this tool.
+    Starts an EC2 instance by Name or ID.
+    Only allows starting instances created by this CLI.
     """
-    click.echo(f"Attempting to start instance {instance_id}...")
-
     try:
+        # Step 1: Resolve ID from Name (if needed)
+        instance_id = get_id_by_name(identifier)
+
+        click.echo(f"Resolved ID: {instance_id}")
+        click.echo(f"Attempting to start instance {instance_id}...")
+
         instance = ec2.Instance(instance_id)
         instance.load()
 
@@ -226,11 +234,10 @@ def start_instance(instance_id):
 
         # Perform the action
         instance.start()
-        click.echo(click.style(f"Success! Instance {instance_id} is starting...", fg="green"))
+        click.echo(click.style(f"Success! Instance '{identifier}' ({instance_id}) is starting...", fg="green"))
 
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))
-
 
 def get_id_by_name(name_or_id):
     """

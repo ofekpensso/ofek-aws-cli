@@ -34,16 +34,16 @@ def list():
     ec2_ops.list_instances()
 
 @ec2.command()
-@click.argument('instance_id')
-def stop(instance_id):
+@click.argument('identifier')
+def stop(identifier):
     """Stop an EC2 instance (Only if created by CLI)."""
-    ec2_ops.stop_instance(instance_id)
+    ec2_ops.stop_instance(identifier)
 
 @ec2.command()
-@click.argument('instance_id')
-def start(instance_id):
+@click.argument('identifier')
+def start(identifier):
     """Start an EC2 instance (Only if created by CLI)."""
-    ec2_ops.start_instance(instance_id)
+    ec2_ops.start_instance(identifier)
 
 
 @ec2.command()
