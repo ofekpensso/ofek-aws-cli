@@ -33,6 +33,18 @@ def list():
     """List all instances created by this CLI."""
     ec2_ops.list_instances()
 
+@ec2.command()
+@click.argument('instance_id')
+def stop(instance_id):
+    """Stop an EC2 instance (Only if created by CLI)."""
+    ec2_ops.stop_instance(instance_id)
+
+@ec2.command()
+@click.argument('instance_id')
+def start(instance_id):
+    """Start an EC2 instance (Only if created by CLI)."""
+    ec2_ops.start_instance(instance_id)
+
 # --- S3 Group (Placeholders for later) ---
 @cli.group()
 def s3():

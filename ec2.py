@@ -165,3 +165,68 @@ def list_instances():
         console.print(table)
     else:
         click.echo(click.style("No instances found with the platform-cli tag.", fg="yellow"))
+
+
+def stop_instance(instance_id):
+    """
+    Stops a specific EC2 instance, but ONLY if it was created by this tool.
+    """
+    click.echo(f"Attempting to stop instance {instance_id}...")
+
+    try:
+        # Get the instance object
+        instance = ec2.Instance(instance_id)
+
+        # Load tags (crucial step to check ownership)
+        instance.load()
+
+        # Validation: Check if the instance has our specific tag
+        is_ours = False
+        if instance.tags:
+            for tag in instance.tags:
+                if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
+                    is_ours = True
+                    break
+
+        if not is_ours:
+            click.echo(
+                click.style(f"Error: Access Denied! Instance {instance_id} was not created by this CLI.", fg="red"))
+            return
+
+        # Perform the action
+        instance.stop()
+        click.echo(click.style(f"Success! Instance {instance_id} is stopping...", fg="yellow"))
+
+    except Exception as e:
+        click.echo(click.style(f"Error: {e}", fg="red"))
+
+
+def start_instance(instance_id):
+    """
+    Starts a specific EC2 instance, but ONLY if it was created by this tool.
+    """
+    click.echo(f"Attempting to start instance {instance_id}...")
+
+    try:
+        instance = ec2.Instance(instance_id)
+        instance.load()
+
+        # Validation
+        is_ours = False
+        if instance.tags:
+            for tag in instance.tags:
+                if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
+                    is_ours = True
+                    break
+
+        if not is_ours:
+            click.echo(
+                click.style(f"Error: Access Denied! Instance {instance_id} was not created by this CLI.", fg="red"))
+            return
+
+        # Perform the action
+        instance.start()
+        click.echo(click.style(f"Success! Instance {instance_id} is starting...", fg="green"))
+
+    except Exception as e:
+        click.echo(click.style(f"Error: {e}", fg="red"))
