@@ -230,3 +230,35 @@ def start_instance(instance_id):
 
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))
+
+
+def terminate_instance(instance_id):
+    """
+    Terminates (PERMANENTLY deletes) a specific EC2 instance.
+    Includes strict tag validation to ensure we don't delete production servers.
+    """
+    click.echo(f"Attempting to terminate instance {instance_id}...")
+
+    try:
+        instance = ec2.Instance(instance_id)
+        instance.load()
+
+        # Validation: Check ownership tags
+        is_ours = False
+        if instance.tags:
+            for tag in instance.tags:
+                if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
+                    is_ours = True
+                    break
+
+        if not is_ours:
+            click.echo(
+                click.style(f"Error: Access Denied! Instance {instance_id} was not created by this CLI.", fg="red"))
+            return
+
+        # Execute Termination
+        instance.terminate()
+        click.echo(click.style(f"Success! Instance {instance_id} is being terminated.", fg="red"))
+
+    except Exception as e:
+        click.echo(click.style(f"Error: {e}", fg="red"))
