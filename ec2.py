@@ -111,60 +111,73 @@ def create_instance(instance_type, os_type, name):
         click.echo(click.style(f"AWS Error: {e}", fg="red"))
 
 
-def list_instances():
+def list_instances(print_table=True):
     """
     Lists all EC2 instances created by this tool.
-    Displays them in a formatted table using the 'rich' library.
+    Returns a list of dictionaries for internal use.
+    Argument 'print_table' controls whether to show output to user.
     """
-
-    # Filter instances that have our specific 'CreatedBy' tag
-    # We want to see ALL states (running, stopped, pending) to manage them
-    instances = ec2.instances.filter(
-        Filters=[
-            {'Name': 'tag:' + TAG_KEY, 'Values': [TAG_VALUE]}
-        ]
-    )
-
-    # Initialize the Rich Console and Table
     console = Console()
     table = Table(show_header=True, header_style="bold magenta")
-
-    # Define table columns
     table.add_column("Instance ID", style="dim")
-    table.add_column("Name", style="cyan")
-    table.add_column("Type")
-    table.add_column("State")
-    table.add_column("Public IP", justify="right")
+    table.add_column("Name", style="white")
+    table.add_column("Type", style="cyan")
+    table.add_column("State", style="green")
+    table.add_column("Public IP", style="yellow")
 
-    click.echo("Fetching instances...")
+    if print_table:
+        click.echo("Fetching instances...")
 
-    found_instances = False
-    for instance in instances:
-        found_instances = True
+    found_instances = []
 
-        # Extract the 'Name' tag if it exists
-        name = "N/A"
-        if instance.tags:
-            for tag in instance.tags:
-                if tag['Key'] == 'Name':
-                    name = tag['Value']
-                    break
-
-        # Add row to the table
-        # We use strict string conversion to avoid errors
-        table.add_row(
-            instance.id,
-            name,
-            instance.instance_type,
-            instance.state['Name'],
-            instance.public_ip_address if instance.public_ip_address else "N/A"
+    try:
+        # Filter instances that have our specific 'CreatedBy' tag
+        response = ec2.instances.filter(
+            Filters=[{'Name': 'tag:' + TAG_KEY, 'Values': [TAG_VALUE]},
+                     {'Name': 'instance-state-name', 'Values': ['pending', 'running', 'stopping', 'stopped', 'shutting-down']}
+              ]
         )
 
-    if found_instances:
-        console.print(table)
-    else:
-        click.echo(click.style("No instances found with the platform-cli tag.", fg="yellow"))
+        for instance in response:
+            # Extract the 'Name' tag if it exists
+            name = "N/A"
+            if instance.tags:
+                for tag in instance.tags:
+                    if tag['Key'] == 'Name':
+                        name = tag['Value']
+                        break
 
+            # Save info for internal use (cleanup command)
+            info = {
+                'id': instance.id,
+                'name': name,
+                'type': instance.instance_type,
+                'state': instance.state['Name'],
+                'ip': instance.public_ip_address if instance.public_ip_address else "N/A"
+            }
+            found_instances.append(info)
+
+            # Add row to the table
+            table.add_row(
+                info['id'],
+                info['name'],
+                info['type'],
+                info['state'],
+                info['ip']
+            )
+
+        # Only print the table if asked (Default behavior)
+        if print_table:
+            if found_instances:
+                console.print(table)
+            else:
+                click.echo(click.style("No instances found with the platform-cli tag.", fg="yellow"))
+
+        return found_instances
+
+    except Exception as e:
+        click.echo(click.style(f"AWS Error: {e}", fg="red"))
+        return []
 
 def stop_instance(identifier):
     """
@@ -303,3 +316,18 @@ def terminate_instance(identifier):
 
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))
+
+
+def terminate_all_instances():
+    """
+    Finds and terminates ALL EC2 instances created by this CLI.
+    """
+    click.echo("Scanning for EC2 instances to terminate...")
+    instances = list_instances(print_table=False)  # Reuse existing list logic
+
+    if not instances:
+        click.echo(click.style("No EC2 instances found.", fg="yellow"))
+        return
+
+    for inst in instances:
+        terminate_instance(inst['id'])

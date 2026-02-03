@@ -238,3 +238,65 @@ def delete_bucket(bucket_name, force):
 
     except ClientError as e:
         click.echo(click.style(f"AWS Error: {e}", fg="red"))
+
+
+def get_managed_buckets():
+    """
+    Returns a list of S3 bucket names created by this CLI.
+    """
+    found_buckets = []
+    try:
+        # Use Client to list all buckets (Resource generic iteration can be slower/less detailed)
+        response = s3_client.list_buckets()
+
+        for bucket in response['Buckets']:
+            name = bucket['Name']
+            try:
+                # Use Client to fetch tags for each bucket
+                tags = s3_client.get_bucket_tagging(Bucket=name).get('TagSet', [])
+                for tag in tags:
+                    if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
+                        found_buckets.append(name)
+                        break
+            except ClientError:
+                # Continue if bucket has no tags or access is denied
+                continue
+    except ClientError:
+        pass
+
+    return found_buckets
+
+
+def delete_all_buckets():
+    """
+    Finds and deletes ALL S3 buckets created by this CLI.
+    Forces deletion of objects and versions.
+    """
+    click.echo("Scanning for S3 buckets to delete (this might take a moment)...")
+
+    # Step 1: Find our buckets using the helper function
+    buckets_to_delete = get_managed_buckets()
+
+    if not buckets_to_delete:
+        click.echo(click.style("No S3 buckets found.", fg="yellow"))
+        return
+
+    # Step 2: Delete them using s3_resource (easier for object deletion)
+    for bucket_name in buckets_to_delete:
+        try:
+            click.echo(f"Deleting bucket {bucket_name}...")
+
+            # Using s3_resource here because it handles object/version deletion easily
+            bucket = s3_resource.Bucket(bucket_name)
+
+            # Delete all versions (if versioning was enabled)
+            bucket.object_versions.delete()
+            # Delete all remaining objects
+            bucket.objects.all().delete()
+            # Delete the bucket itself
+            bucket.delete()
+
+            click.echo(click.style(f"Deleted {bucket_name}", fg="green"))
+
+        except ClientError as e:
+            click.echo(click.style(f"Failed to delete {bucket_name}: {e}", fg="red"))

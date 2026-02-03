@@ -208,3 +208,65 @@ def list_records(zone_id):
         console.print(table)
     except ClientError as e:
         click.echo(click.style(f"AWS Error: {e}", fg="red"))
+
+
+def get_managed_zones():
+    """
+    Returns a list of Route53 Zones (ID, Name) created by this CLI.
+    """
+    found_zones = []
+    try:
+        zones = r53_client.list_hosted_zones()['HostedZones']
+        for zone in zones:
+            zone_id = zone['Id'].split('/')[-1]
+            if validate_zone_ownership(zone_id):
+                found_zones.append({'id': zone_id, 'name': zone['Name']})
+    except ClientError:
+        pass
+
+    return found_zones
+
+
+def delete_all_zones():
+    """
+    Finds and deletes ALL Route53 Zones created by this CLI.
+    """
+    click.echo("Scanning for Route53 Zones to delete...")
+    try:
+        zones = r53_client.list_hosted_zones()['HostedZones']
+        found_any = False
+
+        for zone in zones:
+            zone_id = zone['Id'].split('/')[-1]
+
+            # Check ownership
+            if validate_zone_ownership(zone_id):
+                found_any = True
+                click.echo(f"Cleaning up Zone: {zone['Name']} ({zone_id})...")
+
+                # 1. Delete all records (except NS/SOA)
+                records = r53_client.list_resource_record_sets(HostedZoneId=zone_id)
+                changes = []
+                for r in records['ResourceRecordSets']:
+                    if r['Type'] not in ['NS', 'SOA']:
+                        changes.append({
+                            'Action': 'DELETE',
+                            'ResourceRecordSet': r
+                        })
+
+                if changes:
+                    r53_client.change_resource_record_sets(
+                        HostedZoneId=zone_id,
+                        ChangeBatch={'Changes': changes}
+                    )
+                    click.echo(f" - Deleted {len(changes)} records.")
+
+                # 2. Delete the Zone itself
+                r53_client.delete_hosted_zone(Id=zone_id)
+                click.echo(click.style(f" - Zone deleted.", fg="green"))
+
+        if not found_any:
+            click.echo(click.style("No Route53 zones found.", fg="yellow"))
+
+    except ClientError as e:
+        click.echo(click.style(f"AWS Error: {e}", fg="red"))
