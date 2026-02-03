@@ -74,9 +74,31 @@ def create(name_prefix, public):
     s3_ops.create_bucket(name_prefix, public)
 
 @s3.command()
+@click.argument('bucket_name')
+@click.argument('file_path')
+def upload(bucket_name, file_path):
+    """
+    Upload a file to a bucket (Only if created by CLI).
+    Usage: ofek-cli s3 upload <bucket_name> <path_to_file>
+    """
+    s3_ops.upload_file(bucket_name, file_path)
+
+@s3.command()
 def list():
     """List S3 buckets created by this CLI."""
     s3_ops.list_buckets()
+
+@s3.command()
+@click.argument('bucket_name')
+@click.option('--force', is_flag=True, help="Delete bucket even if it contains files (Empties it first).")
+def delete(bucket_name, force):
+    """
+    Delete an S3 bucket (Only if created by CLI).
+    """
+    if click.confirm(f"WARNING: Are you sure you want to delete '{bucket_name}'?"):
+        s3_ops.delete_bucket(bucket_name, force)
+    else:
+        click.echo("Operation cancelled.")
 
 # --- Route53 Group (Placeholders for later) ---
 @cli.group()
