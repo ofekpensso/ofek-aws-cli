@@ -58,7 +58,7 @@ def delete(identifier):
     else:
         click.echo("Operation cancelled.")
 
-# --- S3 Group (Placeholders for later) ---
+# --- S3 Group ---
 @cli.group()
 def s3():
     """Manage S3 Buckets."""
@@ -101,7 +101,6 @@ def delete(bucket_name, force):
     else:
         click.echo("Operation cancelled.")
 
-# --- Route53 Group (Placeholders for later) ---
 # --- Route53 Group ---
 @cli.group()
 def route53():
@@ -115,6 +114,13 @@ def create_zone(domain_name):
     r53_ops.create_hosted_zone(domain_name)
 
 @route53.command()
+@click.argument('zone_id')
+def delete_zone(zone_id):
+    """Delete a Hosted Zone (Must be empty)."""
+    if click.confirm(f"Are you sure you want to delete zone {zone_id}?"):
+        r53_ops.delete_hosted_zone(zone_id)
+
+@route53.command()
 def list_zones():
     """List Hosted Zones created by this tool."""
     r53_ops.list_zones()
@@ -124,11 +130,17 @@ def list_zones():
 @click.argument('record_name')
 @click.argument('ip_address')
 def add_record(zone_id, record_name, ip_address):
-    """
-    Add an A-Record to a Zone.
-    STRICT: The IP must belong to an EC2 instance created by this CLI.
-    """
+    """Add an A-Record (Verified IPs only)."""
     r53_ops.create_record(zone_id, record_name, ip_address)
+
+@route53.command()
+@click.argument('zone_id')
+@click.argument('record_name')
+@click.argument('ip_address')
+def delete_record(zone_id, record_name, ip_address):
+    """Delete an A-Record."""
+    if click.confirm(f"Delete record {record_name} -> {ip_address}?"):
+        r53_ops.delete_record(zone_id, record_name, ip_address)
 
 @route53.command()
 @click.argument('zone_id')
