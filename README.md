@@ -150,3 +150,127 @@ To prevent unnecessary costs, you can remove all resources created by this tool 
 **Run:**
 ```bash
 python main.py cleanup
+
+
+## 📸 Demo Evidence
+
+Here is a visual walkthrough of the tool in action:
+
+### 1. Creating & Managing Instances
+![EC2 Creation](media/ec2-create.png)
+
+### 2. Listing Active Resources (Table View)
+![Resource List](media/s3cd.png)
+
+### 3. Safety Cleanup (The "Nuke" Command)
+![Cleanup Process](media/cleanup.png)
+
+The following log demonstrates a full lifecycle run: creating resources (EC2, S3, Route53), verifying them, and performing a clean teardown using the `cleanup` command.
+
+<details>
+<summary><strong>Click to expand full terminal output log</strong> 📝</summary>
+
+```text
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % echo "This is proof for Ofek Project" > ofek-evidence.txt
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % ec2 create --name ofek-cli-test
+Finding latest AMI for amazon-linux...
+Selected AMI: ami-0532be01f26a3de55
+Launching instance 'ofek-cli-test'...
+Success! Instance 'ofek-cli-test' (i-03a804ac8b4c88cba) created successfully.
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % ec2 list
+Fetching instances...
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Instance ID         ┃ Name          ┃ Type     ┃ State   ┃ Public IP     ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ i-03a804ac8b4c88cba │ ofek-cli-test │ t3.micro │ running │ 18.206.212.67 │
+└─────────────────────┴───────────────┴──────────┴─────────┴───────────────┘
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % ec2 stop ofek-cli-test
+Searching for instance named 'ofek-cli-test'...
+Resolved ID: i-03a804ac8b4c88cba
+Attempting to stop instance i-03a804ac8b4c88cba...
+Success! Instance 'ofek-cli-test' (i-03a804ac8b4c88cba) is stopping...
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % ec2 start ofek-cli-test
+Searching for instance named 'ofek-cli-test'...
+Resolved ID: i-03a804ac8b4c88cba
+Attempting to start instance i-03a804ac8b4c88cba...
+Success! Instance 'ofek-cli-test' (i-03a804ac8b4c88cba) is starting...
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % s3 create ofek-cli-test
+Creating bucket 'ofek-cli-test-3mbeag'...
+Encryption enabled (AES256).
+Bucket set to PRIVATE (Secure).
+Success! Bucket 'ofek-cli-test-3mbeag' created.
+Versioning enabled (Data Protection).
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % s3 list
+Fetching buckets (this might take a moment to scan tags)...
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
+┃ Bucket Name          ┃ Creation Date       ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━┩
+│ ofek-cli-test-3mbeag │ 2026-02-03 14:16:17 │
+└──────────────────────┴─────────────────────┘
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % s3 upload  ofek-cli-test-3mbeag ofek-evidence.txt
+Preparing to upload 'ofek-evidence.txt' to bucket 'ofek-cli-test-3mbeag'...
+Success! File 'ofek-evidence.txt' uploaded to 'ofek-cli-test-3mbeag'.
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % route53 create-zone ofek-cli.test.
+Creating Hosted Zone for 'ofek-cli.test.'...
+Success! Hosted Zone created.
+Zone ID: Z04276643PMK993L88ASM
+Name Servers: ns-318.awsdns-39.com, ns-848.awsdns-42.net, ns-1376.awsdns-44.org, ns-1989.awsdns-56.co.uk
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % ec2 list
+Fetching instances...
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Instance ID         ┃ Name          ┃ Type     ┃ State   ┃ Public IP     ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ i-03a804ac8b4c88cba │ ofek-cli-test │ t3.micro │ running │ 174.129.52.15 │
+└─────────────────────┴───────────────┴──────────┴─────────┴───────────────┘
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % route53 add-record Z04276643PMK993L88ASM api.ofek-cli.test. 174.129.52.15
+Success! Record 'api.ofek-cli.test.' -> 174.129.52.15 set.
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % route53 list-records Z04276643PMK993L88ASM
+┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Name               ┃ Type ┃ Value                                                                         ┃
+┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ ofek-cli.test.     │ NS   │ ns-318.awsdns-39.com., ns-848.awsdns-42.net., ns-1376.awsdns-44.org.,         │
+│                    │      │ ns-1989.awsdns-56.co.uk.                                                      │
+│ ofek-cli.test.     │ SOA  │ ns-318.awsdns-39.com. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400  │
+│ api.ofek-cli.test. │ A    │ 174.129.52.15                                                                 │
+└────────────────────┴──────┴───────────────────────────────────────────────────────────────────────────────┘
+
+(.venv) ofekpensso@MacBook-Air-sl-ofek OFEK-AWS-CLI % ofek-cli cleanup
+Scanning for resources to delete...
+
+Found 3 resources managed by platform-cli:
+
+[EC2 Instances] (1)
+ - i-03a804ac8b4c88cba (ofek-cli-test)
+
+[S3 Buckets] (1)
+ - ofek-cli-test-3mbeag
+
+[Route53 Zones] (1)
+ - ofek-cli.test. (Z04276643PMK993L88ASM)
+
+⚠️  Are you sure you want to PERMANENTLY DELETE these resources? [y/N]: y
+
+--- Starting Cleanup ---
+Scanning for EC2 instances to terminate...
+Resolved ID: i-03a804ac8b4c88cba
+Attempting to terminate instance i-03a804ac8b4c88cba...
+Success! Instance 'i-03a804ac8b4c88cba' (i-03a804ac8b4c88cba) is being terminated.
+Scanning for S3 buckets to delete (this might take a moment)...
+Deleting bucket ofek-cli-test-3mbeag...
+Deleted ofek-cli-test-3mbeag
+Scanning for Route53 Zones to delete...
+Cleaning up Zone: ofek-cli.test. (Z04276643PMK993L88ASM)...
+ - Deleted 1 records.
+ - Zone deleted.
+
+Cleanup complete! 🧹
