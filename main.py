@@ -1,6 +1,7 @@
 import click
 import ec2 as ec2_ops  # We import our EC2 logic module and give it a nickname 'ec2_ops'
 import s3 as s3_ops
+import route53 as r53_ops
 # --- Main Entry Point ---
 @click.group()
 def cli():
@@ -101,10 +102,39 @@ def delete(bucket_name, force):
         click.echo("Operation cancelled.")
 
 # --- Route53 Group (Placeholders for later) ---
+# --- Route53 Group ---
 @cli.group()
 def route53():
-    """Manage Route53 DNS Zones."""
+    """Manage Route53 DNS Zones and Records."""
     pass
+
+@route53.command()
+@click.argument('domain_name')
+def create_zone(domain_name):
+    """Create a new Public Hosted Zone."""
+    r53_ops.create_hosted_zone(domain_name)
+
+@route53.command()
+def list_zones():
+    """List Hosted Zones created by this tool."""
+    r53_ops.list_zones()
+
+@route53.command()
+@click.argument('zone_id')
+@click.argument('record_name')
+@click.argument('ip_address')
+def add_record(zone_id, record_name, ip_address):
+    """
+    Add an A-Record to a Zone.
+    STRICT: The IP must belong to an EC2 instance created by this CLI.
+    """
+    r53_ops.create_record(zone_id, record_name, ip_address)
+
+@route53.command()
+@click.argument('zone_id')
+def list_records(zone_id):
+    """List all DNS records in a Hosted Zone."""
+    r53_ops.list_records(zone_id)
 
 if __name__ == '__main__':
     cli()
