@@ -12,5 +12,8 @@ setup(
     entry_points='''
         [console_scripts]
         ofek-cli=main:cli
+        ec2=main:ec2
+        s3=main:s3
+        route53=main:route53
     ''',
 )
