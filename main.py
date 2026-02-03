@@ -1,6 +1,6 @@
 import click
 import ec2 as ec2_ops  # We import our EC2 logic module and give it a nickname 'ec2_ops'
-
+import s3 as s3_ops
 # --- Main Entry Point ---
 @click.group()
 def cli():
@@ -62,6 +62,21 @@ def delete(identifier):
 def s3():
     """Manage S3 Buckets."""
     pass
+
+@s3.command()
+@click.argument('name_prefix')
+@click.option('--public', is_flag=True, help="Set the bucket to be publicly accessible (Requires confirmation).")
+def create(name_prefix, public):
+    """
+    Create a new S3 bucket (Private by default).
+    The name will be suffixed with random characters for uniqueness.
+    """
+    s3_ops.create_bucket(name_prefix, public)
+
+@s3.command()
+def list():
+    """List S3 buckets created by this CLI."""
+    s3_ops.list_buckets()
 
 # --- Route53 Group (Placeholders for later) ---
 @cli.group()

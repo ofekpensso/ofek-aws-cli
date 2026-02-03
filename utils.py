@@ -1,5 +1,7 @@
 import boto3
 import getpass
+import random
+import string
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
 import click
 
@@ -45,3 +47,13 @@ def get_boto3_client(service_name):
     except ClientError as e:
         click.echo(click.style(f"AWS Error: {e}", fg="red"))
         exit(1)
+
+def generate_bucket_name(prefix):
+    """
+    Generates a globally unique bucket name.
+    S3 bucket names must be unique across ALL AWS accounts.
+    Format: <prefix>-<6_random_chars>
+    """
+    # Generate 6 random lowercase letters/numbers
+    random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    return f"{prefix}-{random_suffix}"
