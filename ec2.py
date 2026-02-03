@@ -1,36 +1,30 @@
 import click
-from utils import get_boto3_resource, get_common_tags, TAG_KEY, TAG_VALUE
+from utils import get_boto3_resource, get_boto3_client, get_common_tags, TAG_KEY, TAG_VALUE
 from rich.console import Console
 from rich.table import Table
 
 ec2 = get_boto3_resource('ec2')
-
+ssm_client = get_boto3_client('ssm')
 
 def get_latest_ami(os_type):
     """
-    Fetches the latest AMI ID for Ubuntu or Amazon Linux 2.
-    It filters images by owner and name, then sorts by creation date.
+    Fetches the latest AMI ID using SSM Parameter Store for BOTH OS types.
+    This ensures we always get the latest official stable release.
     """
     if os_type == "ubuntu":
-        # Filter for Ubuntu 22.04 LTS
-        filters = [{'Name': 'name', 'Values': ['ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*']}]
-        owner = '099720109477'  # Canonical (Official Ubuntu Owner ID)
+        # Official Path for Ubuntu 22.04 LTS (Jammy Jellyfish)
+        param_path = '/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id'
     else:
-        # Filter for Amazon Linux 2
-        filters = [{'Name': 'name', 'Values': ['amzn2-ami-hvm-*-x86_64-gp2']}]
-        owner = '137112412989'  # Amazon (Official Owner ID)
+        # Official Path for Amazon Linux 2023
+        param_path = '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
 
-    # Fetch images from AWS
-    images = list(ec2.images.filter(Owners=[owner], Filters=filters))
-
-    if not images:
-        raise Exception(f"Could not find AMI for {os_type}")
-
-    # Sort by creation date (descending) to get the newest one
-    images.sort(key=lambda x: x.creation_date, reverse=True)
-
-    return images[0].id
-
+    try:
+        # click.echo(f"Debug: Querying SSM path: {param_path}") # לדיבאג אם צריך
+        response = ssm_client.get_parameter(Name=param_path)
+        return response['Parameter']['Value']
+    except Exception as e:
+        click.echo(click.style(f"Error fetching AMI from SSM: {e}", fg="red"))
+        raise e
 
 def count_our_instances():
     """
