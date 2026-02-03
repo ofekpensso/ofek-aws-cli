@@ -85,6 +85,12 @@ def create_bucket(bucket_prefix, is_public):
     except ClientError as e:
         click.echo(click.style(f"AWS Error: {e}", fg="red"))
 
+    s3_client.put_bucket_versioning(
+        Bucket=bucket_name,
+        VersioningConfiguration={'Status': 'Enabled'}
+    )
+    click.echo(click.style(f"Versioning enabled (Data Protection).", fg="green"))
+
 
 def list_buckets():
     """
@@ -212,20 +218,19 @@ def delete_bucket(bucket_name, force):
         # 2. Empty the bucket (if needed)
         bucket = s3_resource.Bucket(bucket_name)
 
-        # Check if empty
-        # We peek to see if there is at least one object
-        objects = list(bucket.objects.limit(1))
+        # Check if empty (we peek at versions now, not just objects)
+        # Note: We check object_versions to catch hidden files too
+        version_count = sum(1 for _ in bucket.object_versions.limit(1))
 
-        if len(objects) > 0:
+        if version_count > 0:
             if not force:
                 click.echo(click.style(f"Error: Bucket is not empty! Use --force to delete it and all its contents.",
                                        fg="yellow"))
                 return
             else:
-                click.echo(click.style("Force delete enabled: Deleting all objects inside...", fg="yellow"))
-                bucket.objects.all().delete()
-                # Note: If you have versioning enabled, you need to delete object_versions too.
-                # For this project, standard delete is enough.
+                click.echo(click.style("Force delete enabled: Deleting ALL versions and markers...", fg="yellow"))
+
+                bucket.object_versions.all().delete()
 
         # 3. Delete the Bucket
         bucket.delete()
