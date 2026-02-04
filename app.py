@@ -38,21 +38,219 @@ st.markdown("A secure interface for your AWS Walled Garden.")
 st.divider()  # A visual line separator
 
 # Logic for the "Dashboard" (Home Page)
+# ==========================================
+#            STEP 1: DASHBOARD (Overview)
+# ==========================================
 if menu == "🏠 Dashboard":
-    st.subheader("Welcome back, Ofek!")
-    st.markdown("""
-    This dashboard gives you full control over your cloud resources.
+    st.header("📊 Project Status Dashboard")
+    st.markdown("Real-time overview of all resources managed by **Ofek CLI**.")
 
-    ### 🚀 Quick Stats
-    """)
+    if st.button("🔄 Refresh Data"):
+        st.rerun()
 
-    # Placeholder metrics (We will connect these to real data later)
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Active Servers", "Loading...", "EC2")
-    col2.metric("Storage Buckets", "Loading...", "S3")
-    col3.metric("DNS Zones", "Loading...", "R53")
+    # --- Data Collection (Scan Everything) ---
+    with st.spinner("Scanning AWS environment..."):
+        all_resources = []
 
-    st.info("👈 Choose a service from the sidebar to start managing.")
+        # 1. Scan EC2
+        ec2_count = 0
+        try:
+            # Get only our tagged instances
+            e_resp = ec2_client.describe_instances(Filters=[{'Name': f'tag:{TAG_KEY}', 'Values': [TAG_VALUE]}])
+            for r in e_resp['Reservations']:
+                for i in r['Instances']:
+                    if i['State']['Name'] == 'terminated': continue  # Skip dead ones
+
+                    name = next((t['Value'] for t in i.get('Tags', []) if t['Key'] == 'Name'), "Unknown")
+                    all_resources.append({
+                        "Type": "🖥️ EC2",
+                        "Name": name,
+                        "ID": i['InstanceId'],
+                        "Status": i['State']['Name'].upper(),
+                        "Details": i.get('PublicIpAddress', 'No IP'),
+                        "Raw": i  # Keep raw object for deletion logic
+                    })
+                    ec2_count += 1
+        except Exception as e:
+            st.error(f"EC2 Scan Error: {e}")
+
+        # 2. Scan S3
+        s3_count = 0
+        try:
+            s_resp = s3_client.list_buckets()
+            for b in s_resp['Buckets']:
+                try:
+                    # Must check tags individually
+                    tags = s3_client.get_bucket_tagging(Bucket=b['Name'])
+                    is_ours = any(t['Key'] == TAG_KEY and t['Value'] == TAG_VALUE for t in tags['TagSet'])
+                    if is_ours:
+                        all_resources.append({
+                            "Type": "📦 S3",
+                            "Name": b['Name'],
+                            "ID": "-",
+                            "Status": "ACTIVE",
+                            "Details": "Encrypted"
+                        })
+                        s3_count += 1
+                except:
+                    continue
+        except Exception as e:
+            st.error(f"S3 Scan Error: {e}")
+
+        # 3. Scan Route53
+        r53_count = 0
+        try:
+            r_resp = r53_client.list_hosted_zones()
+            for z in r_resp['HostedZones']:
+                try:
+                    z_id = z['Id'].split('/')[-1]
+                    t_resp = r53_client.list_tags_for_resource(ResourceType='hostedzone', ResourceId=z_id)
+                    is_ours = any(
+                        t['Key'] == TAG_KEY and t['Value'] == TAG_VALUE for t in t_resp['ResourceTagSet']['Tags'])
+
+                    if is_ours:
+                        all_resources.append({
+                            "Type": "🌐 Route53",
+                            "Name": z['Name'],
+                            "ID": z_id,
+                            "Status": "ACTIVE",
+                            "Details": "Hosted Zone"
+                        })
+                        r53_count += 1
+                except:
+                    continue
+        except Exception as e:
+            st.error(f"Route53 Scan Error: {e}")
+
+    # --- Display Metrics ---
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Active Servers", ec2_count, delta="Max 2")
+    col2.metric("Storage Buckets", s3_count)
+    col3.metric("DNS Zones", r53_count)
+    col4.metric("Total Resources", len(all_resources))
+
+    st.divider()
+
+    # --- Display Consolidated Table ---
+    st.subheader("📋 Resource Inventory")
+
+    if not all_resources:
+        st.info("✨ Environment is clean. No active resources found.")
+    else:
+        # Prepare data for display (exclude raw objects)
+        display_data = [{k: v for k, v in r.items() if k != 'Raw'} for r in all_resources]
+
+        st.dataframe(
+            display_data,
+            column_config={
+                "Type": st.column_config.TextColumn("Resource Type", width="small"),
+                "Name": st.column_config.TextColumn("Resource Name", width="medium"),
+                "ID": st.column_config.TextColumn("Resource ID", width="small"),
+                "Status": st.column_config.TextColumn("State", width="small"),
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.divider()
+
+        # --- DANGER ZONE: CLEANUP ---
+        st.subheader("⚠️ Danger Zone")
+
+        # 1. The Trigger Button
+        if st.button("☢️ Nuke System (Delete All Resources)", type="primary"):
+            st.session_state['confirm_nuke'] = True
+
+        # 2. The Confirmation Box
+        if st.session_state.get('confirm_nuke'):
+            st.warning(
+                f"🚨 ARE YOU SURE? This will permanently delete {len(all_resources)} resources. This action cannot be undone.")
+
+            c_yes, c_no = st.columns(2)
+
+            # CANCEL
+            if c_no.button("Cancel"):
+                st.session_state['confirm_nuke'] = False
+                st.rerun()
+
+            # EXECUTE (The "Kill" Logic)
+            if c_yes.button("Yes, Destroy Everything 💥"):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                total_items = len(all_resources)
+                current_item = 0
+
+                try:
+                    for resource in all_resources:
+                        current_item += 1
+                        progress = current_item / total_items
+                        progress_bar.progress(progress)
+
+                        r_type = resource['Type']
+                        r_name = resource['Name']
+                        r_id = resource['ID']
+
+                        status_text.text(f"Deleting {r_type}: {r_name}...")
+
+                        # --- DELETE EC2 ---
+                        if "EC2" in r_type:
+                            ec2_client.terminate_instances(InstanceIds=[r_id])
+
+                        # --- DELETE S3 (Recursive) ---
+                        elif "S3" in r_type:
+                            # Empty Objects
+                            objs = s3_client.list_objects_v2(Bucket=r_name)
+                            if 'Contents' in objs:
+                                for obj in objs['Contents']:
+                                    s3_client.delete_object(Bucket=r_name, Key=obj['Key'])
+                            # Empty Versions
+                            vers = s3_client.list_object_versions(Bucket=r_name)
+                            if 'Versions' in vers:
+                                for v in vers['Versions']:
+                                    s3_client.delete_object(Bucket=r_name, Key=v['Key'], VersionId=v['VersionId'])
+                            if 'DeleteMarkers' in vers:
+                                for dm in vers['DeleteMarkers']:
+                                    s3_client.delete_object(Bucket=r_name, Key=dm['Key'], VersionId=dm['VersionId'])
+                            # Delete Bucket
+                            s3_client.delete_bucket(Bucket=r_name)
+
+                        # --- DELETE ROUTE53 (Recursive) ---
+                        elif "Route53" in r_type:
+                            try:
+                                # 1. List all records
+                                records = r53_client.list_resource_record_sets(HostedZoneId=r_id)['ResourceRecordSets']
+
+                                # 2. Delete all non-default records (A, CNAME, etc.)
+                                for rec in records:
+                                    # Skip default records (SOA and NS) - AWS manages these
+                                    if rec['Type'] in ['SOA', 'NS']:
+                                        continue
+
+                                    # Delete custom record
+                                    r53_client.change_resource_record_sets(
+                                        HostedZoneId=r_id,
+                                        ChangeBatch={
+                                            'Changes': [{
+                                                'Action': 'DELETE',
+                                                'ResourceRecordSet': rec
+                                            }]
+                                        }
+                                    )
+
+                                # 3. Now delete the Zone (it should be empty of custom records)
+                                r53_client.delete_hosted_zone(Id=r_id)
+
+                            except Exception as e:
+                                st.error(f"Error cleaning Zone {r_name}: {e}")
+
+                    status_text.success("✅ System Nuked Successfully!")
+                    time.sleep(2)
+                    st.session_state['confirm_nuke'] = False
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"Error during nuke: {e}")
+
 
 # ==========================================
 #            STEP 2: EC2 MANAGER
@@ -451,7 +649,7 @@ elif menu == "🌐 Route53 Zones":
                     # Ensure trailing dot
                     if not domain.endswith('.'): domain += '.'
 
-                    ref = str(time.time())  # Unique reference
+                    ref = str(time.time())
                     res = r53_client.create_hosted_zone(
                         Name=domain,
                         CallerReference=ref,
@@ -459,7 +657,6 @@ elif menu == "🌐 Route53 Zones":
                     )
                     zone_id = res['HostedZone']['Id'].split('/')[-1]
 
-                    # Apply Walled Garden Tags
                     r53_client.change_tags_for_resource(
                         ResourceType='hostedzone',
                         ResourceId=zone_id,
@@ -481,7 +678,7 @@ elif menu == "🌐 Route53 Zones":
             all_zones = r53_client.list_hosted_zones()['HostedZones']
             managed_zones = []
 
-            # Filter by Tag
+            # Filter
             for z in all_zones:
                 try:
                     z_id = z['Id'].split('/')[-1]
@@ -502,7 +699,6 @@ elif menu == "🌐 Route53 Zones":
                     z_id = z['Id'].split('/')[-1]
                     z_name = z['Name']
 
-                    # --- Zone Header ---
                     c1, c2, c3 = st.columns([3, 2, 1])
                     c1.write(f"🌐 **{z_name}**")
                     c2.caption(f"`{z_id}`")
@@ -516,16 +712,24 @@ elif menu == "🌐 Route53 Zones":
                         except Exception as e:
                             st.error("❌ Zone must be empty of custom records before deleting.")
 
-                    # --- DETAILS EXPANDER (Records Manager) ---
+                    # --- DETAILS EXPANDER ---
                     with st.expander(f"📝 Manage Records for {z_name}"):
 
-                        # A. Add New Record Form
+                        # --- A. Add New Record Form (With Auto-Clear) ---
                         st.caption("Add 'A' Record (Connect Domain to IP)")
+
+                        # 1. Initialize a counter for this zone's form to allow resetting
+                        if f"form_counter_{z_id}" not in st.session_state:
+                            st.session_state[f"form_counter_{z_id}"] = 0
+
+                        form_ver = st.session_state[f"form_counter_{z_id}"]
+
                         rc1, rc2, rc3 = st.columns([2, 2, 1])
                         with rc1:
-                            sub_name = st.text_input("Subdomain (e.g. www)", key=f"sub_{z_id}")
+                            # Dynamic Key -> Changes when we increment counter -> Clears Input
+                            sub_name = st.text_input("Subdomain (e.g. www)", key=f"sub_{z_id}_{form_ver}")
                         with rc2:
-                            target_ip = st.text_input("Target IP Address", key=f"ip_{z_id}")
+                            target_ip = st.text_input("Target IP Address", key=f"ip_{z_id}_{form_ver}")
                         with rc3:
                             st.write("")
                             st.write("")
@@ -546,7 +750,11 @@ elif menu == "🌐 Route53 Zones":
                                             }]
                                         }
                                     )
-                                    st.success(f"✅ Record {full_name} -> {target_ip} added!")
+                                    st.success(f"✅ Record added!")
+
+                                    # 2. Increment counter to clear the form
+                                    st.session_state[f"form_counter_{z_id}"] += 1
+
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
@@ -560,19 +768,16 @@ elif menu == "🌐 Route53 Zones":
                             records = r53_client.list_resource_record_sets(HostedZoneId=z_id)['ResourceRecordSets']
 
                             for rec in records:
-                                # Skip default SOA/NS records to keep UI clean? (Optional, currently showing all)
                                 rec_name = rec['Name']
                                 rec_type = rec['Type']
                                 rec_values = [r['Value'] for r in rec.get('ResourceRecords', [])]
                                 value_str = ", ".join(rec_values)
 
-                                # Display Row
                                 r_col1, r_col2, r_col3, r_col4 = st.columns([3, 1, 3, 1])
                                 r_col1.write(f"`{rec_name}`")
                                 r_col2.write(f"**{rec_type}**")
                                 r_col3.write(value_str)
 
-                                # Delete Record Button (Only for non-SOA/NS)
                                 if rec_type not in ['SOA', 'NS']:
                                     if r_col4.button("🗑️", key=f"del_rec_{rec_name}_{z_id}"):
                                         try:
@@ -591,7 +796,7 @@ elif menu == "🌐 Route53 Zones":
                                         except Exception as e:
                                             st.error(f"Error: {e}")
                                 else:
-                                    r_col4.write("🔒")  # Lock icon for default records
+                                    r_col4.write("🔒")
 
                         except Exception as e:
                             st.error(f"Could not load records: {e}")
