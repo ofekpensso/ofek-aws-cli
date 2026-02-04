@@ -34,7 +34,7 @@ Before running the tool, ensure you have the following installed:
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/ofekpensso/ofek-aws-cli.git](https://github.com/ofekpensso/ofek-aws-cli.git)
+    git clone https://github.com/ofekpensso/ofek-aws-cli.git
     cd OFEK-AWS-CLI
     ```
 
