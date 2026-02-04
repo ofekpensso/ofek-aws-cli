@@ -51,7 +51,7 @@ def validate_ip_ownership(ip_address):
 def create_hosted_zone(domain_name):
     """
     Creates a public Route53 Hosted Zone.
-    Prevents duplicates by checking if a managed zone already exists.
+    Prevents duplicates and correctly displays Name Servers.
     """
     # Ensure domain ends with a dot (standard DNS format)
     if not domain_name.endswith('.'):
@@ -61,19 +61,17 @@ def create_hosted_zone(domain_name):
 
     # --- Step 1: Check for duplicates (Idempotency) ---
     try:
-        # Get all zones
+        # Fetch all existing zones to check for duplicates
         existing_zones = r53_client.list_hosted_zones()['HostedZones']
 
         for zone in existing_zones:
-            # Check if name matches
             if zone['Name'] == domain_name:
-                # Check if WE own it (check tags)
+                # Check if this zone is managed by our CLI (check tags)
                 zone_id = zone['Id'].split('/')[-1]
                 try:
                     tags = r53_client.list_tags_for_resource(ResourceType='hostedzone', ResourceId=zone_id)
                     tag_list = tags['ResourceTagSet']['Tags']
 
-                    # Search for our specific signature tag
                     is_ours = False
                     for tag in tag_list:
                         if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
@@ -84,18 +82,20 @@ def create_hosted_zone(domain_name):
                         click.echo(
                             click.style(f"Warning: Zone '{domain_name}' already exists ({zone_id}). Skipping creation.",
                                         fg="yellow"))
-                        return  # Stop here, don't create a new one
+                        return  # Stop here, do not create a duplicate
 
                 except ClientError:
-                    continue  # Skip if permissions fail
+                    continue  # Skip if we don't have permission to view tags
 
     except ClientError as e:
         click.echo(click.style(f"Error checking existing zones: {e}", fg="red"))
         return
 
-    # --- Step 2: Create the Zone (Only if we didn't return above) ---
+    # --- Step 2: Create the Zone ---
     try:
+        # Create a unique caller reference to allow safe retries
         ref = f"{domain_name}-{datetime.now().timestamp()}"
+
         response = r53_client.create_hosted_zone(
             Name=domain_name,
             CallerReference=ref,
@@ -107,7 +107,7 @@ def create_hosted_zone(domain_name):
 
         zone_id = response['HostedZone']['Id'].split('/')[-1]
 
-        # Add Tags
+        # --- Step 3: Tag the Resource ---
         r53_client.change_tags_for_resource(
             ResourceType='hostedzone',
             ResourceId=zone_id,
@@ -121,12 +121,17 @@ def create_hosted_zone(domain_name):
         click.echo(click.style("Success! Hosted Zone created.", fg="green"))
         click.echo(f"Zone ID: {zone_id}")
 
-        # Show Name Servers
-        ns = response['HostedZone']['NameServers']
-        click.echo(f"Name Servers: {', '.join(ns)}")
+        # --- Step 4: Display Name Servers (FIXED HERE) ---
+        # The fix: We look inside 'DelegationSet', not 'HostedZone'
+        if 'DelegationSet' in response and 'NameServers' in response['DelegationSet']:
+            ns_list = response['DelegationSet']['NameServers']
+            click.echo(f"Name Servers: {', '.join(ns_list)}")
+        else:
+            click.echo("Name Servers: Created (Check AWS Console for details)")
 
     except ClientError as e:
         click.echo(click.style(f"AWS Error: {e}", fg="red"))
+
 
 def delete_hosted_zone(zone_id):
     """Deletes a Hosted Zone (Only if created by CLI)."""

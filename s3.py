@@ -4,26 +4,24 @@ from botocore.exceptions import ClientError
 from rich.console import Console
 from rich.table import Table
 from utils import get_boto3_resource, get_boto3_client, get_common_tags, generate_bucket_name, TAG_KEY, TAG_VALUE
-
+import json
 # Initialize S3 connections
 s3_resource = get_boto3_resource('s3')
 s3_client = get_boto3_client('s3')
 
 
-def create_bucket(bucket_prefix, is_public):
+def create_bucket(bucket_prefix, is_public=False):
     """
-    Creates a new S3 bucket with a unique name.
-    Handles 'Public' vs 'Private' security settings and enforces Encryption.
+    Creates a new S3 bucket.
+    Handles 'Public' via Bucket Policy (The modern way) vs 'Private'.
     """
-
-    # 1. Generate unique name
+    # 1. Generate Name
     bucket_name = generate_bucket_name(bucket_prefix)
 
-    # 2. Safety Guardrail: Confirm Public Access
+    # 2. Guardrail
     if is_public:
         click.echo(
             click.style(f"WARNING: You are about to create a PUBLIC bucket '{bucket_name}'.", fg="yellow", bold=True))
-        click.echo("This means anyone on the internet might be able to access files in this bucket.")
         if not click.confirm("Are you sure you want to proceed?"):
             click.echo("Operation cancelled.")
             return
@@ -31,43 +29,48 @@ def create_bucket(bucket_prefix, is_public):
     click.echo(f"Creating bucket '{bucket_name}'...")
 
     try:
-        # 3. Create the Bucket
-        s3_resource.create_bucket(Bucket=bucket_name)
+        # 3. Create
+        s3_client.create_bucket(Bucket=bucket_name)
+        s3_client.get_waiter('bucket_exists').wait(Bucket=bucket_name)
 
-        # 4. Apply Tags
+        # 4. Tags
         s3_client.put_bucket_tagging(
             Bucket=bucket_name,
             Tagging={'TagSet': get_common_tags()}
         )
 
-        # We explicitly set Server-Side Encryption with S3-managed keys
+        # 5. Encryption
         s3_client.put_bucket_encryption(
             Bucket=bucket_name,
             ServerSideEncryptionConfiguration={
-                'Rules': [
-                    {
-                        'ApplyServerSideEncryptionByDefault': {
-                            'SSEAlgorithm': 'AES256'
-                        }
-                    },
-                ]
+                'Rules': [{'ApplyServerSideEncryptionByDefault': {'SSEAlgorithm': 'AES256'}}]
             }
         )
         click.echo(click.style(f"Encryption enabled (AES256).", fg="green"))
 
-        # 6. Handle Public/Private Configuration
+        # --- 6. PUBLIC / PRIVATE LOGIC (UPDATED) ---
         if is_public:
-            s3_client.put_public_access_block(
-                Bucket=bucket_name,
-                PublicAccessBlockConfiguration={
-                    'BlockPublicAcls': False,
-                    'IgnorePublicAcls': False,
-                    'BlockPublicPolicy': False,
-                    'RestrictPublicBuckets': False
-                }
-            )
-            click.echo(click.style(f"Bucket set to PUBLIC (Block Access Disabled).", fg="red"))
+            # PUBLIC MODE
+            s3_client.delete_public_access_block(Bucket=bucket_name)
+
+            bucket_policy = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "PublicReadGetObject",
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": "s3:GetObject",
+                        "Resource": f"arn:aws:s3:::{bucket_name}/*"
+                    }
+                ]
+            }
+
+            s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
+            click.echo(click.style("⚠️  Bucket set to PUBLIC via Bucket Policy!", fg="red", bold=True))
+
         else:
+            # PRIVATE MODE
             s3_client.put_public_access_block(
                 Bucket=bucket_name,
                 PublicAccessBlockConfiguration={
@@ -77,19 +80,24 @@ def create_bucket(bucket_prefix, is_public):
                     'RestrictPublicBuckets': True
                 }
             )
-            click.echo(click.style(f"Bucket set to PRIVATE (Secure).", fg="green"))
+            click.echo(click.style("Bucket set to PRIVATE (Secure).", fg="green"))
 
-        click.echo(click.style(f"Success! Bucket '{bucket_name}' created.", fg="green"))
+        # 7. Versioning
+        s3_client.put_bucket_versioning(
+            Bucket=bucket_name,
+            VersioningConfiguration={'Status': 'Enabled'}
+        )
+        click.echo(click.style(f"Success! Bucket '{bucket_name}' created.", fg="green", bold=True))
 
     except ClientError as e:
-        click.echo(click.style(f"AWS Error: {e}", fg="red"))
-
-    s3_client.put_bucket_versioning(
-        Bucket=bucket_name,
-        VersioningConfiguration={'Status': 'Enabled'}
-    )
-    click.echo(click.style(f"Versioning enabled (Data Protection).", fg="green"))
-
+        error_code = e.response['Error']['Code']
+        if 'InvalidBucketName' in str(e) or 'InvalidBucketName' == error_code:
+            click.echo(click.style(f"Error: Invalid bucket name '{bucket_prefix}'.", fg="red"))
+        elif 'BucketAlreadyExists' == error_code:
+            click.echo(click.style(f"Error: Bucket '{bucket_name}' already exists.", fg="red"))
+        else:
+            click.echo(click.style(f"AWS Error: {e}", fg="red"))
+        return
 
 def list_buckets():
     """
