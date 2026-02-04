@@ -38,18 +38,12 @@ Before running the tool, ensure you have the following installed:
     cd OFEK-AWS-CLI
     ```
 
-2.  **Create a virtual environment (Recommended):**
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-    ```
-
-3.  **Install dependencies:**
+2.  **Install dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
 
-4.  **Install as executable commands (Optional):**
+3.  **Install as executable commands (Optional):**
     This allows running `ofek-cli`, `ec2`, `s3`, and `route53` directly from the terminal.
     ```bash
     pip install --editable .
