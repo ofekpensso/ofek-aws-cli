@@ -8,11 +8,12 @@ This tool allows users to manage the lifecycle of AWS resources (EC2, S3, Route5
 
 ## 🚀 What This Tool Does
 
-* **EC2 Management:** Launches instances with strict constraints (Max 2 instances). Allowed types: `t3.micro` and `t2.small`. Automatically fetches the latest secure AMIs via SSM Parameter Store.
-* **S3 Storage:** Creates private, encrypted, version-enabled buckets. Prevents accidental public exposure.
-* **Route53 DNS:** Manages Hosted Zones and DNS records. Includes safety guardrails preventing the deletion of non-empty zones.
-* **Resource Isolation:** Operates **only** on resources created by this tool (filtered by tags). It will never touch your other production resources.
-* **Smart Cleanup:** Includes a "Nuke" feature to safely identify and delete all resources created by the CLI.
+* **📊 Project Dashboard:** Instantly view all active resources (EC2, S3, Zones) created by the tool with a single command.
+* **🖥️ EC2 Management:** Launches instances with strict constraints (Max 2 instances). Allowed types: `t3.micro` and `t2.small`. Automatically fetches the latest secure AMIs via SSM Parameter Store.
+* **📦 S3 Storage:** Creates private, encrypted, version-enabled buckets by default. Supports optional **Public Buckets** via strict Bucket Policies.
+* **🌐 Route53 DNS:** Manages Hosted Zones and DNS records. Includes **Idempotency** (prevents duplicate zones) and safety guardrails preventing the deletion of non-empty zones.
+* **🔒 Resource Isolation:** Operates **only** on resources created by this tool (filtered by tags). It will never touch your other production resources.
+* **☢️ Smart Cleanup:** Includes a "Nuke" feature to safely identify and delete all resources created by the CLI.
 
 ---
 
@@ -33,7 +34,7 @@ Before running the tool, ensure you have the following installed:
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/ofekpensso/ofek-aws-cli.git
+    git clone [https://github.com/ofekpensso/ofek-aws-cli.git](https://github.com/ofekpensso/ofek-aws-cli.git)
     cd OFEK-AWS-CLI
     ```
 
@@ -49,7 +50,7 @@ Before running the tool, ensure you have the following installed:
     ```
 
 4.  **Install as executable commands (Optional):**
-    This allows running `ec2`, `s3`, and `route53` directly.
+    This allows running `ofek-cli`, `ec2`, `s3`, and `route53` directly from the terminal.
     ```bash
     pip install --editable .
     ```
@@ -69,6 +70,23 @@ To ensure safety and isolation, every resource created by this tool is automatic
 ---
 
 ## 💻 Usage Examples
+
+### 🌐 Global Management (New!)
+Manage the overall state of your project.
+
+* **View Project Status (Inventory):**
+    Displays a dashboard of all active EC2 instances, S3 buckets, and Route53 zones.
+    ```bash
+    ofek-cli status
+    ```
+
+* **Cleanup (The "Nuke" Command):**
+    Safely scans and deletes ALL resources created by this tool. Includes a dry-run preview.
+    ```bash
+    ofek-cli cleanup
+    ```
+
+---
 
 ### 1. EC2 Operations (Compute)
 The tool enforces a hard limit of **2 instances**.
@@ -94,14 +112,21 @@ Allowed types: `t3.micro`, `t2.small`.
 * **Terminate (Delete) an instance:**
     ```bash
     ec2 terminate i-0123456789abcdef0
+    # OR (Alias)
+    ec2 delete i-0123456789abcdef0
     ```
 
 ### 2. S3 Operations (Storage)
 Buckets are created with **Server-Side Encryption (AES-256)** and **Versioning** enabled by default.
 
-* **Create a private bucket:**
+* **Create a PRIVATE bucket (Default):**
     ```bash
     s3 create ofek-app-data-2026
+    ```
+* **Create a PUBLIC bucket:**
+    ⚠️ **Warning:** This will attach a bucket policy allowing global read access.
+    ```bash
+    s3 create ofek-public-site --public
     ```
 * **Upload a file:**
     ```bash
@@ -118,6 +143,7 @@ Buckets are created with **Server-Side Encryption (AES-256)** and **Versioning**
 
 ### 3. Route53 Operations (DNS)
 Supports creating zones and managing `A` records (IP addresses).
+**Security:** Only IPs belonging to managed EC2 instances can be added to DNS records.
 
 * **Create a Hosted Zone:**
     ```bash
@@ -135,20 +161,5 @@ Supports creating zones and managing `A` records (IP addresses).
     ```bash
     route53 delete-zone Z0123456789ABC
     ```
-
----
-
-## 🧹 Cleanup (The "Nuke" Command)
-
-To prevent unnecessary costs, you can remove all resources created by this tool in one go.
-
-**Features:**
-* Scans all regions for resources tagged `CreatedBy=platform-cli`.
-* Shows a "Dry Run" preview of resources to be deleted.
-* Requires explicit confirmation.
-
-**Run:**
-```bash
-python main.py cleanup
 
 
