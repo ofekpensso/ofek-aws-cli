@@ -40,7 +40,7 @@ Before running the tool, ensure you have the following installed:
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/ofekpensso/ofek-aws-cli.git](https://github.com/ofekpensso/ofek-aws-cli.git)
+    git clone https://github.com/ofekpensso/ofek-aws-cli.git
     cd OFEK-AWS-CLI
     ```
 
@@ -48,7 +48,6 @@ Before running the tool, ensure you have the following installed:
     ```bash
     pip install -r requirements.txt
     ```
-    *(Note: Ensure `streamlit` is included in your requirements file).*
 
 3.  **Install as executable commands (Optional):**
     This allows running `ofek-cli`, `ec2`, `s3`, and `route53` directly from the terminal.
@@ -84,6 +83,7 @@ This will automatically open `http://localhost:8501` in your browser.
 * **Dashboard:** View total active resources and health status.
 * **EC2:** Launch new servers with a simple form; Stop/Terminate with one click.
 * **S3:** Create buckets and upload files using a drag-and-drop interface.
+* **Route53:** Create hosted zones, manage DNS records (A-Records), and visualize zone details.
 * **Danger Zone:** A "Nuke System" button to delete everything (requires confirmation).
 
 ---
