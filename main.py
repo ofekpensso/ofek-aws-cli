@@ -155,6 +155,14 @@ def list_records(zone_id):
     r53_ops.list_records(zone_id)
 
 @cli.command()
+def status():
+    """
+    📊  Shows a dashboard of ALL active resources.
+    Lists EC2 instances, S3 buckets, and Route53 zones managed by this tool.
+    """
+    cleanup_ops.show_inventory()
+
+@cli.command()
 @click.option('--yes', is_flag=True, help="Skip confirmation prompt")
 def cleanup(yes):
     """
