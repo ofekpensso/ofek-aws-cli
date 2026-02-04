@@ -85,7 +85,7 @@ def show_inventory():
             state_text = click.style(i['state'], fg=state_color)
 
             # Safe get for IP
-            public_ip = i.get('public_ip', 'No Public IP')
+            public_ip = i.get('ip', 'No Public IP')
 
             click.echo(f"  • {i['name']} ({i['id']}) - [{state_text}] - {public_ip}")
     else:
