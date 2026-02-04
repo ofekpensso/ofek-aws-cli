@@ -105,15 +105,17 @@ Allowed types: `t3.micro`, `t2.small`.
     ec2 list
     ```
 * **Stop/Start an instance:**
+    Accepts either Instance ID or Name.
     ```bash
-    ec2 stop <INSTANCE_ID>
-    ec2 start <INSTANCE_ID>
+    ec2 stop <INSTANCE_NAME_OR_ID>
+    ec2 start <INSTANCE_NAME_OR_ID>
     ```
+
 * **Terminate (Delete) an instance:**
+    Accepts either Instance ID or Name.
     ```bash
-    ec2 terminate <INSTANCE_ID>
-    # OR (Alias)
-    ec2 delete <INSTANCE_ID>
+    ec2 terminate <INSTANCE_NAME_OR_ID>
+    ec2 delete <INSTANCE_NAME_OR_ID>
     ```
 
 ### 2. S3 Operations (Storage)
