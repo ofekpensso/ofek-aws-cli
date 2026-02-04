@@ -1,5 +1,4 @@
 import click
-import boto3
 import os
 from botocore.exceptions import ClientError
 from rich.console import Console
@@ -41,7 +40,7 @@ def create_bucket(bucket_prefix, is_public):
             Tagging={'TagSet': get_common_tags()}
         )
 
-        # We explicitly set Server-Side Encryption with S3-managed keys (AES256)
+        # We explicitly set Server-Side Encryption with S3-managed keys
         s3_client.put_bucket_encryption(
             Bucket=bucket_name,
             ServerSideEncryptionConfiguration={
@@ -281,7 +280,7 @@ def delete_all_buckets():
         click.echo(click.style("No S3 buckets found.", fg="yellow"))
         return
 
-    # Step 2: Delete them using s3_resource (easier for object deletion)
+    # Step 2: Delete them using s3_resource
     for bucket_name in buckets_to_delete:
         try:
             click.echo(f"Deleting bucket {bucket_name}...")

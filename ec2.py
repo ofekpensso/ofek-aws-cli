@@ -12,14 +12,12 @@ def get_latest_ami(os_type):
     This ensures we always get the latest official stable release.
     """
     if os_type == "ubuntu":
-        # Official Path for Ubuntu 22.04 LTS (Jammy Jellyfish)
         param_path = '/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id'
     else:
-        # Official Path for Amazon Linux 2023
         param_path = '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
 
     try:
-        # click.echo(f"Debug: Querying SSM path: {param_path}") # לדיבאג אם צריך
+        # click.echo(f"Debug: Querying SSM path: {param_path}")
         response = ssm_client.get_parameter(Name=param_path)
         return response['Parameter']['Value']
     except Exception as e:
@@ -79,14 +77,10 @@ def create_instance(instance_type, os_type, name):
         return
 
     # --- Tagging Logic ---
-    # We need to prepare the tags list BEFORE creating the instance.
-    # First, get the mandatory tags (CreatedBy, Owner)
     tags = get_common_tags()
 
     # Then, append the 'Name' tag provided by the user
-    # This ensures the instance has a visible name in the AWS Console
     tags.append({'Key': 'Name', 'Value': name})
-
     # 3. Launch the Instance
     click.echo(f"Launching instance '{name}'...")
     try:
@@ -114,8 +108,6 @@ def create_instance(instance_type, os_type, name):
 def list_instances(print_table=True):
     """
     Lists all EC2 instances created by this tool.
-    Returns a list of dictionaries for internal use.
-    Argument 'print_table' controls whether to show output to user.
     """
     console = Console()
     table = Table(show_header=True, header_style="bold magenta")

@@ -54,6 +54,5 @@ def generate_bucket_name(prefix):
     S3 bucket names must be unique across ALL AWS accounts.
     Format: <prefix>-<6_random_chars>
     """
-    # Generate 6 random lowercase letters/numbers
     random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
     return f"{prefix}-{random_suffix}"

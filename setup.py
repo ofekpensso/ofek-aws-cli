@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='ofek-aws-cli',
     version='0.1',
-    py_modules=['main', 'utils', 'ec2', 's3', 'route53'], # רשימת הקבצים שלך
+    py_modules=['main', 'utils', 'ec2', 's3', 'route53', 'cleanup_ops'],
     install_requires=[
         'Click',
         'boto3',

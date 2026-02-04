@@ -1,7 +1,8 @@
 import click
-import ec2 as ec2_ops  # We import our EC2 logic module and give it a nickname 'ec2_ops'
+import ec2 as ec2_ops
 import s3 as s3_ops
 import route53 as r53_ops
+import cleanup_ops
 # --- Main Entry Point ---
 @click.group()
 def cli():
@@ -46,6 +47,11 @@ def start(identifier):
     """Start an EC2 instance (Only if created by CLI)."""
     ec2_ops.start_instance(identifier)
 
+@ec2.command()
+@click.argument('instance_id')
+def terminate(instance_id):
+    """Terminates (deletes) an EC2 instance."""
+    ec2_ops.terminate_instance(instance_id)
 
 @ec2.command()
 @click.argument('identifier')
@@ -148,7 +154,6 @@ def list_records(zone_id):
     """List all DNS records in a Hosted Zone."""
     r53_ops.list_records(zone_id)
 
-
 @cli.command()
 @click.option('--yes', is_flag=True, help="Skip confirmation prompt")
 def cleanup(yes):
@@ -156,62 +161,7 @@ def cleanup(yes):
     ☢️  DANGER: Deletes ALL resources created by this tool.
     Shows a preview of resources to be deleted before executing.
     """
-    click.echo(click.style("Scanning for resources to delete...", fg="cyan"))
-
-    # 1. Discovery Phase (Find everything)
-    # -----------------------------------
-    instances = ec2_ops.list_instances(print_table=False)
-    buckets = s3_ops.get_managed_buckets()
-    zones = r53_ops.get_managed_zones()
-
-    total_count = len(instances) + len(buckets) + len(zones)
-
-    if total_count == 0:
-        click.echo(click.style("No resources found. Environment is clean! ✨", fg="green"))
-        return
-
-    # 2. Preview Phase (Show the list)
-    # --------------------------------
-    click.echo(click.style(f"\nFound {total_count} resources managed by platform-cli:", fg="yellow", bold=True))
-
-    if instances:
-        click.echo(click.style(f"\n[EC2 Instances] ({len(instances)})", bold=True))
-        for i in instances:
-            click.echo(f" - {i['id']} ({i['name']})")
-
-    if buckets:
-        click.echo(click.style(f"\n[S3 Buckets] ({len(buckets)})", bold=True))
-        for b in buckets:
-            click.echo(f" - {b}")
-
-    if zones:
-        click.echo(click.style(f"\n[Route53 Zones] ({len(zones)})", bold=True))
-        for z in zones:
-            click.echo(f" - {z['name']} ({z['id']})")
-
-    # 3. Confirmation Phase (The Red Button)
-    # --------------------------------------
-    click.echo("")  # Newline
-    if not yes:
-        if not click.confirm(
-                click.style("⚠️  Are you sure you want to PERMANENTLY DELETE these resources?", fg="red", bold=True)):
-            click.echo("Cleanup aborted.")
-            return
-
-    # 4. Execution Phase (Delete everything)
-    # --------------------------------------
-    click.echo(click.style("\n--- Starting Cleanup ---", fg="white", bold=True))
-
-    if instances:
-        ec2_ops.terminate_all_instances()
-
-    if buckets:
-        s3_ops.delete_all_buckets()
-
-    if zones:
-        r53_ops.delete_all_zones()
-
-    click.echo(click.style("\nCleanup complete! 🧹", fg="green", bold=True))
+    cleanup_ops.execute_cleanup(yes)
 
 if __name__ == '__main__':
     cli()

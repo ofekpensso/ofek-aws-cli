@@ -1,5 +1,4 @@
 import click
-import boto3
 from botocore.exceptions import ClientError
 from rich.console import Console
 from rich.table import Table
@@ -11,7 +10,6 @@ ec2_client = get_boto3_client('ec2')
 
 
 # --- Helper Functions ---
-
 def validate_zone_ownership(zone_id):
     """
     Validates that the Hosted Zone was created by this CLI.
@@ -27,7 +25,6 @@ def validate_zone_ownership(zone_id):
         return False
     except ClientError:
         return False
-
 
 def validate_ip_ownership(ip_address):
     """
@@ -47,7 +44,6 @@ def validate_ip_ownership(ip_address):
         return False
     except ClientError:
         return False
-
 
 # --- Core Functions ---
 
