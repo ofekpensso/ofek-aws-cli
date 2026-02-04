@@ -10,7 +10,7 @@ This tool allows users to manage the lifecycle of AWS resources (EC2, S3, Route5
 
 * **📊 Project Dashboard:** Instantly view all active resources (EC2, S3, Zones) created by the tool with a single command.
 * **🖥️ EC2 Management:** Launches instances with strict constraints (Max 2 instances). Allowed types: `t3.micro` and `t2.small`. Automatically fetches the latest secure AMIs via SSM Parameter Store.
-* **📦 S3 Storage:** Creates private, encrypted, version-enabled buckets by default. Supports optional **Public Buckets** via strict Bucket Policies.
+* **📦 S3 Storage:** Creates private, encrypted (SSE-S3/AES-256), version-enabled buckets by default. Supports optional **Public Buckets** via strict Bucket Policies.
 * **🌐 Route53 DNS:** Manages Hosted Zones and DNS records. Includes **Idempotency** (prevents duplicate zones) and safety guardrails preventing the deletion of non-empty zones.
 * **🔒 Resource Isolation:** Operates **only** on resources created by this tool (filtered by tags). It will never touch your other production resources.
 * **☢️ Smart Cleanup:** Includes a "Nuke" feature to safely identify and delete all resources created by the CLI.
@@ -94,11 +94,11 @@ Allowed types: `t3.micro`, `t2.small`.
 
 * **Create a server:** (Auto-selects latest Amazon Linux 2023 via SSM)
     ```bash
-    ec2 create --name my-web-server
+    ec2 create --name <YOUR_SERVER_NAME>
     ```
 * **Create an Ubuntu server:**
     ```bash
-    ec2 create --name my-ubuntu-server --os ubuntu --type t2.small
+    ec2 create --name <YOUR_SERVER_NAME> --os ubuntu --type t2.small
     ```
 * **List active instances:**
     ```bash
@@ -106,14 +106,14 @@ Allowed types: `t3.micro`, `t2.small`.
     ```
 * **Stop/Start an instance:**
     ```bash
-    ec2 stop i-0123456789abcdef0
-    ec2 start i-0123456789abcdef0
+    ec2 stop <INSTANCE_ID>
+    ec2 start <INSTANCE_ID>
     ```
 * **Terminate (Delete) an instance:**
     ```bash
-    ec2 terminate i-0123456789abcdef0
+    ec2 terminate <INSTANCE_ID>
     # OR (Alias)
-    ec2 delete i-0123456789abcdef0
+    ec2 delete <INSTANCE_ID>
     ```
 
 ### 2. S3 Operations (Storage)
@@ -121,16 +121,16 @@ Buckets are created with **Server-Side Encryption (AES-256)** and **Versioning**
 
 * **Create a PRIVATE bucket (Default):**
     ```bash
-    s3 create ofek-app-data-2026
+    s3 create <BUCKET_NAME>
     ```
 * **Create a PUBLIC bucket:**
     ⚠️ **Warning:** This will attach a bucket policy allowing global read access.
     ```bash
-    s3 create ofek-public-site --public
+    s3 create <BUCKET_NAME> --public
     ```
 * **Upload a file:**
     ```bash
-    s3 upload ofek-app-data-2026 ./local-file.txt
+    s3 upload <BUCKET_NAME> <PATH_TO_FILE>
     ```
 * **List managed buckets:**
     ```bash
@@ -138,7 +138,7 @@ Buckets are created with **Server-Side Encryption (AES-256)** and **Versioning**
     ```
 * **Delete a bucket:** (Forces deletion of all objects and versions inside)
     ```bash
-    s3 delete ofek-app-data-2026
+    s3 delete <BUCKET_NAME>
     ```
 
 ### 3. Route53 Operations (DNS)
@@ -147,19 +147,24 @@ Supports creating zones and managing `A` records (IP addresses).
 
 * **Create a Hosted Zone:**
     ```bash
-    route53 create-zone ofek-cloud.test.
+    route53 create-zone <DOMAIN_NAME>
     ```
+    *Example: `route53 create-zone my-app.test.`*
+
 * **Add/Update a DNS Record:**
     ```bash
-    route53 add-record Z0123456789ABC api.ofek-cloud.test. 34.201.93.38
+    route53 add-record <ZONE_ID> <FULL_RECORD_NAME> <IP_ADDRESS>
     ```
+    *Example: `route53 add-record Z0123... api.my-app.test. 34.200.10.10`*
+
 * **Delete a DNS Record:**
     ```bash
-    route53 delete-record Z0123456789ABC api.ofek-cloud.test. 34.201.93.38
+    route53 delete-record <ZONE_ID> <FULL_RECORD_NAME> <IP_ADDRESS>
     ```
+
 * **Delete a Zone:** (Includes safety check - Zone must be empty of custom records)
     ```bash
-    route53 delete-zone Z0123456789ABC
+    route53 delete-zone <ZONE_ID>
     ```
 
 
