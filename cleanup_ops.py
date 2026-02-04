@@ -84,12 +84,13 @@ def show_inventory():
             state_color = "green" if i['state'] == 'running' else "yellow"
             state_text = click.style(i['state'], fg=state_color)
 
-            # --- FIX: Handle missing Public IP safely ---
-            public_ip = i.get('ip', 'No Public IP')
+            # Safe get for IP
+            public_ip = i.get('public_ip', 'No Public IP')
 
             click.echo(f"  • {i['name']} ({i['id']}) - [{state_text}] - {public_ip}")
     else:
-        click.echo(click.style("🖥️   EC2 Instances: None", fg="dim"))
+        # TIKUN: dim=True instead of fg="dim"
+        click.echo(click.style("🖥️   EC2 Instances: None", dim=True))
 
     click.echo("")  # Spacer
 
@@ -99,7 +100,8 @@ def show_inventory():
         for b in buckets:
             click.echo(f"  • {b}")
     else:
-        click.echo(click.style("📦  S3 Buckets: None", fg="dim"))
+        # TIKUN: dim=True instead of fg="dim"
+        click.echo(click.style("📦  S3 Buckets: None", dim=True))
 
     click.echo("")  # Spacer
 
@@ -109,7 +111,8 @@ def show_inventory():
         for z in zones:
             click.echo(f"  • {z['name']} ({z['id']})")
     else:
-        click.echo(click.style("🌐  Route53 Zones: None", fg="dim"))
+        # TIKUN: dim=True instead of fg="dim"
+        click.echo(click.style("🌐  Route53 Zones: None", dim=True))
 
     # 5. Summary
     click.echo(click.style("--------------------------", fg="cyan"))

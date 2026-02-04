@@ -16,7 +16,7 @@ def create_bucket(bucket_prefix, is_public=False):
     Handles 'Public' via Bucket Policy (The modern way) vs 'Private'.
     """
     # 1. Generate Name
-    bucket_name = generate_bucket_name(bucket_prefix)
+    bucket_name = bucket_prefix
 
     # 2. Guardrail
     if is_public:
@@ -89,14 +89,36 @@ def create_bucket(bucket_prefix, is_public=False):
         )
         click.echo(click.style(f"Success! Bucket '{bucket_name}' created.", fg="green", bold=True))
 
+
     except ClientError as e:
+
         error_code = e.response['Error']['Code']
-        if 'InvalidBucketName' in str(e) or 'InvalidBucketName' == error_code:
-            click.echo(click.style(f"Error: Invalid bucket name '{bucket_prefix}'.", fg="red"))
-        elif 'BucketAlreadyExists' == error_code:
-            click.echo(click.style(f"Error: Bucket '{bucket_name}' already exists.", fg="red"))
+
+        # 1. Handle "Name Taken" errors (Global Uniqueness)
+
+        if error_code in ['BucketAlreadyExists', 'BucketAlreadyOwnedByYou']:
+
+            click.echo(
+                click.style(f"\n❌ Error: The name '{bucket_name}' is already taken globally.", fg="red", bold=True))
+
+            click.echo(click.style("💡 Tip: Try adding numbers or your name (e.g., 'my-app-data-2026').", fg="yellow"))
+
+
+        # 2. Handle Invalid Names (Spaces, Uppercase, etc.)
+
+        elif error_code == 'InvalidBucketName':
+
+            click.echo(click.style(f"\n❌ Error: '{bucket_name}' is not a valid S3 name.", fg="red"))
+
+            click.echo("Rules: No uppercase, no underscores, no spaces.")
+
+
+        # 3. Other Errors
+
         else:
-            click.echo(click.style(f"AWS Error: {e}", fg="red"))
+
+            click.echo(click.style(f"\n❌ AWS Error: {e}", fg="red"))
+
         return
 
 def list_buckets():
