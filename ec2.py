@@ -64,7 +64,7 @@ def create_instance(instance_type, os_type, name):
     current_count = count_our_instances()
     if current_count >= 2:
         click.echo(click.style(
-            f"Error: Limit reached! You already have {current_count} running instances created by this tool.",
+            f"Error: Limit reached! You already have {current_count} instances created by this tool.",
             fg="red"))
         return
 
