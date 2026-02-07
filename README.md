@@ -122,13 +122,21 @@ Allowed types: `t3.micro`, `t2.small`.
     ec2 list
     ~~~
 
-* **Stop / Start / Terminate:**
-    ~~~bash
-    ec2 stop <INSTANCE_NAME_OR_ID>
-    ec2 start <INSTANCE_NAME_OR_ID>
-    ec2 terminate <INSTANCE_NAME_OR_ID>
-    ec2 delete <INSTANCE_NAME_OR_ID>
-    ~~~
+* **Stop an instance:**
+~~~bash
+ec2 stop <INSTANCE_NAME_OR_ID>
+~~~
+
+* **Start an instance:**
+~~~bash
+ec2 start <INSTANCE_NAME_OR_ID>
+~~~
+
+* **Terminate an instance:**
+~~~bash
+ec2 terminate <INSTANCE_NAME_OR_ID>
+ec2 delete <INSTANCE_NAME_OR_ID>
+~~~
 
 ### 2. S3 Operations (Storage)
 Buckets are created with **Server-Side Encryption (AES-256)** and **Versioning** enabled by default.
