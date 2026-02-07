@@ -48,10 +48,15 @@ def start(identifier):
     ec2_ops.start_instance(identifier)
 
 @ec2.command()
-@click.argument('instance_id')
-def terminate(instance_id):
-    """Terminates (deletes) an EC2 instance."""
-    ec2_ops.terminate_instance(instance_id)
+@click.argument('identifier')
+def terminate(identifier):
+    """Terminates (deletes) an EC2 instance by Name or ID."""
+
+    # Safety Prompt
+    if click.confirm(f"⚠️  WARNING: Are you sure you want to PERMANENTLY terminate {identifier}?"):
+        ec2_ops.terminate_instance(identifier)
+    else:
+        click.echo("Operation cancelled.")
 
 @ec2.command()
 @click.argument('identifier')
