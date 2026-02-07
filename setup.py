@@ -8,6 +8,8 @@ setup(
         'Click',
         'boto3',
         'rich',
+        'streamlit',
+        'setuptools'
     ],
     entry_points='''
         [console_scripts]

@@ -38,22 +38,32 @@ Before running the tool, ensure you have the following installed:
 
 ## 📦 Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/ofekpensso/ofek-aws-cli.git
-    cd OFEK-AWS-CLI
-    ```
+1. **Clone the repository:**
+~~~bash
+git clone https://github.com/ofekpensso/ofek-aws-cli.git
+cd OFEK-AWS-CLI
+~~~
 
-2.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+2. **Set up a Virtual Environment (Recommended):**
+Using a virtual environment ensures your project dependencies are isolated.
+* **Create the environment:**
+~~~bash
+python -m venv .venv
+~~~
+* **Activate it:**
+    * **Mac / Linux:** `source .venv/bin/activate`
+    * **Windows:** `.venv\Scripts\activate`
 
-3.  **Install as executable commands (Optional):**
-    This allows running `ofek-cli`, `ec2`, `s3`, and `route53` directly from the terminal.
-    ```bash
-    pip install --editable .
-    ```
+3. **Install dependencies:**
+~~~bash
+pip install -r requirements.txt
+~~~
+
+4. **Install as executable commands:**
+This allows you to run `ofek-cli`, `ec2`, `s3`, and `route53` directly from your terminal.
+~~~bash
+pip install --editable .
+~~~
 
 ---
 
