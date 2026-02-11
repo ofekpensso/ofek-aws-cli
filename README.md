@@ -65,6 +65,12 @@ This allows you to run `ofek-cli`, `ec2`, `s3`, and `route53` directly from your
 pip install --editable .
 ~~~
 
+5. **Verify Installation:**
+Run the post-install script to confirm everything is set up correctly:
+~~~bash
+python post_install.py
+~~~
+
 ---
 
 ## 🏷️ Tagging Convention
