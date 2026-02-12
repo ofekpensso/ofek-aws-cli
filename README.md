@@ -71,6 +71,27 @@ Run the post-install script to confirm everything is set up correctly:
 python post_install.py
 ~~~
 
+## 📸 Demo & Screenshots
+
+**You should see this success banner:**
+![Installation Success](screenshots/ofek-cli.png)
+
+### 🖥️ Web Dashboard (Streamlit UI)
+Manage your resources visually with a modern dashboard.
+![Web UI](screenshots/ofek-aws-ui.png)
+
+### ⌨️ CLI - EC2 & S3 Operations
+Provisions specific instance types and creates secure S3 buckets.
+![EC2 & S3 Demo](screenshots/ofek-aws-cli-ec2-s3.png)
+
+### 🌐 CLI - Route53 Management
+Easily manage Hosted Zones and DNS Records.
+![Route53 Demo](screenshots/ofek-aws-cli-route53.png)
+
+### 🧹 CLI - Smart Cleanup
+Automated "Nuke" feature to clean up project-specific resources.
+![Cleanup Demo](screenshots/ofek-aws-cli-cleanup.png)
+
 ---
 
 ## 🏷️ Tagging Convention
